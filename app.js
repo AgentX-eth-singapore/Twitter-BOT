@@ -42,8 +42,8 @@ app.post("/verify", async (req, res) => {
 // Function to delete bot messages that tagged the user
 async function deleteBotMessages(guild, userId) {
   try {
-    // Fetch messages from the guild system channel (replace with your specific channel if necessary)
-    const channel = guild.systemChannel || guild.channels.cache.get("YOUR_SPECIFIC_CHANNEL_ID");
+    // Fetch messages from the specified channel
+    const channel = guild.channels.cache.get("1286788205001310229"); // Update with correct channel ID
     if (!channel) {
       console.error("Channel not found for deleting messages.");
       return;
@@ -62,6 +62,39 @@ async function deleteBotMessages(guild, userId) {
     }
   } catch (error) {
     console.error("Error deleting bot messages:", error);
+  }
+}
+
+// Function to send the post with the "Claim Now" button and image after verification
+async function sendClaimPost(channel, userId) {
+  // Create a "Claim Now" button
+  const claimButton = new ButtonBuilder()
+    .setLabel("Claim Now")
+    .setStyle(ButtonStyle.Primary)
+    .setCustomId("claim_now_button"); // Custom ID for further interaction handling
+
+  // Create an action row to hold the button
+  const row = new ActionRowBuilder().addComponents(claimButton);
+
+  // Create an embed with the image and a description
+  const embed = new EmbedBuilder()
+    .setColor(0x00ff00)
+    .setTitle("Claim Your Reward")
+    .setDescription("Click the button below to claim your reward.")
+    .setImage("https://shop.ogs.gg/cdn/shop/files/frontcap.png?v=1706630562&width=1400")
+    .setFooter({ text: "Rewards Await!" });
+
+  try {
+    // Send the message with the button and embed
+    await channel.send({
+      content: `<@${userId}>`,
+      embeds: [embed],
+      components: [row],
+    });
+
+    console.log("Claim post sent to the user.");
+  } catch (error) {
+    console.error("Error sending claim post:", error);
   }
 }
 
@@ -134,6 +167,16 @@ app.post(
                 flags: 64, // Ephemeral response, only visible to the user
               },
             });
+
+            // Wait for some time (e.g., 10 seconds) before showing the claim post
+            setTimeout(async () => {
+              const channel = guild.channels.cache.get("1286788205001310229"); // Use the correct channel ID
+              if (channel) {
+                await sendClaimPost(channel, member.user.id);
+              } else {
+                console.error("Channel for claim post not found.");
+              }
+            }, 2000);
           } else {
             // If verification fails, send a message with a button and a link
             const button = new ButtonBuilder()
@@ -224,7 +267,7 @@ client.once("ready", async () => {
 // Listen for new members joining the server and prompt verification interaction
 client.on("guildMemberAdd", async (member) => {
   console.log(`New member joined: ${member.user.tag}`);
-  const channel = member.guild.systemChannel; // Replace with your specific channel ID if necessary
+  const channel = member.guild.channels.cache.get("1286788205001310229"); // Update with correct channel ID
 
   if (channel) {
     await sendVerificationMessageInChannel(channel, member);
