@@ -84,7 +84,7 @@ app.post(
 
         try {
           // Make a POST request to your verification endpoint (full URL)
-          const response = await axios.post("http://localhost:3000/verify", {
+          const response = await axios.post("https://discord-bot-1-7fgm.onrender.com/verify", {
             discordId: member.user.id,
             username: member.user.username,
           });
