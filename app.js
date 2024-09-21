@@ -14,6 +14,8 @@ import {
   EmbedBuilder,
   ButtonStyle,
 } from "discord.js";
+import { ethers } from "ethers";
+import {abi as genericErc20Abi} from "./erc20.js";
 
 // Create an express app
 const app = express();
@@ -32,7 +34,14 @@ app.post("/verify", async (req, res) => {
 
   try {
     // Simulate successful verification response
-    return res.json({ success: true });
+    const provider = new ethers.JsonRpcProvider("https://network.ambrosus.io");
+    const balance = await provider.getBalance("0xF977814e90dA44bFA03b6295A0616a897441aceC");
+    console.log("Balance:", balance.toString());
+    if(balance > 0) {
+      return res.json({ success: true });
+    } else {
+      return res.json({ success: false });
+    }
   } catch (error) {
     console.error("Error during verification:", error);
     return res.json({ success: false });
@@ -143,6 +152,7 @@ app.post(
 
         try {
           // Make a POST request to your verification endpoint (full URL)
+          // http://localhost:3000
           const response = await axios.post("https://discord-bot-1-7fgm.onrender.com/verify", {
             discordId: member.user.id,
             username: member.user.username,
