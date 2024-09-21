@@ -175,7 +175,6 @@ async function sendVerificationMessageInChannel(channel, member) {
     .setFooter({ text: "Verification Required" });
 
   try {
-    // Send a message in the channel mentioning the user with the verification prompt
     await channel.send({
       content: `<@${member.id}>`,
       embeds: [embed],
