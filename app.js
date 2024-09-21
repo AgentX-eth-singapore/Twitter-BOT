@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import axios from "axios"; // Make sure you have axios installed
+import axios from "axios"; // Ensure axios is installed
 import {
   InteractionType,
   InteractionResponseType,
@@ -39,12 +39,38 @@ app.post("/verify", async (req, res) => {
   }
 });
 
+// Function to delete bot messages that tagged the user
+async function deleteBotMessages(guild, userId) {
+  try {
+    // Fetch messages from the guild system channel (replace with your specific channel if necessary)
+    const channel = guild.systemChannel || guild.channels.cache.get("YOUR_SPECIFIC_CHANNEL_ID");
+    if (!channel) {
+      console.error("Channel not found for deleting messages.");
+      return;
+    }
+
+    // Fetch messages from the channel
+    const messages = await channel.messages.fetch({ limit: 100 }); // Adjust the limit as necessary
+    const taggedMessages = messages.filter(
+      (msg) => msg.author.bot && msg.mentions.users.has(userId)
+    );
+
+    // Delete each message
+    for (const msg of taggedMessages.values()) {
+      await msg.delete();
+      console.log(`Deleted message tagged with user ID: ${userId}`);
+    }
+  } catch (error) {
+    console.error("Error deleting bot messages:", error);
+  }
+}
+
 // Endpoint for Discord interactions
 app.post(
   "/interactions",
   verifyKeyMiddleware(process.env.PUBLIC_KEY),
   async function (req, res) {
-    const { type, data, member, guild_id, message, token } = req.body;
+    const { type, data, member, guild_id } = req.body;
 
     // Handle verification requests
     if (type === InteractionType.PING) {
@@ -93,6 +119,9 @@ app.post(
           if (response.data.success) {
             // Grant access by assigning the required role to the user
             await guildMember.roles.add(requiredRoleID);
+
+            // Remove tagged messages once verified
+            await deleteBotMessages(guild, member.user.id);
 
             // Send a follow-up ephemeral message to confirm verification and remove the button and image
             await res.send({
