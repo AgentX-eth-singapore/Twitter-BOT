@@ -31,7 +31,7 @@ app.post(
   "/interactions",
   verifyKeyMiddleware(process.env.PUBLIC_KEY),
   async function (req, res) {
-    const { type, data, member, guild_id, token } = req.body;
+    const { type, data, member, guild_id, message, token } = req.body;
 
     // Handle verification requests
     if (type === InteractionType.PING) {
@@ -77,8 +77,15 @@ app.post(
             // Grant access by assigning the required role to the user
             await guildMember.roles.add(requiredRoleID);
 
+            // Fetch and delete the verification message if it's available
+            if (message) {
+              const channel = await client.channels.fetch(message.channel_id);
+              const msg = await channel.messages.fetch(message.id);
+              await msg.delete();
+            }
+
             // Send a follow-up ephemeral message to confirm verification
-            await client.rest.patch(
+            const confirmationMessage = await client.rest.patch(
               `/webhooks/${process.env.APP_ID}/${token}/messages/@original`,
               {
                 body: {
@@ -88,6 +95,15 @@ app.post(
                 },
               }
             );
+
+            // Optionally, if you need to delete the confirmation message after a delay
+            setTimeout(async () => {
+              try {
+                await confirmationMessage.delete();
+              } catch (error) {
+                console.error("Error deleting confirmation message:", error);
+              }
+            }, 5000); // Delete the confirmation message after 5 seconds
           } catch (error) {
             console.error("Error during role assignment:", error);
 
@@ -142,7 +158,7 @@ async function sendVerificationMessageInChannel(channel, member) {
 
   try {
     // Send a message in the channel mentioning the user with the verification prompt
-    await channel.send({
+    const message = await channel.send({
       content: `<@${member.id}>`,
       embeds: [embed],
       components: [row],
