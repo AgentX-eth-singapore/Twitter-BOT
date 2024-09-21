@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import axios from "axios"; // Make sure you have axios installed
 import {
   InteractionType,
   InteractionResponseType,
@@ -16,14 +17,26 @@ import {
 
 // Create an express app
 const app = express();
+app.use(express.json()); // Middleware to parse JSON requests
 const PORT = process.env.PORT || 3000;
 
 // Create a new Discord client with intents to track guild members
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-  ],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+});
+
+// POST request to verify the user
+app.post("/verify", async (req, res) => {
+  const { discordId, username } = req.body;
+  console.log(`Verifying user with ID: ${discordId}, Username: ${username}`);
+
+  try {
+    // Simulate successful verification response
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Error during verification:", error);
+    return res.json({ success: false });
+  }
 });
 
 // Endpoint for Discord interactions
@@ -67,59 +80,64 @@ app.post(
 
       // Handle the "verify" command or button click
       if (name === "verify" || custom_id === "verify_button") {
-        // Acknowledge the interaction immediately to avoid timeout
-        res.send({
-          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
-        });
+        console.log(`User ID: ${member.user.id}, Username: ${member.user.username}`);
 
-        setTimeout(async () => {
-          try {
+        try {
+          // Make a POST request to your verification endpoint (full URL)
+          const response = await axios.post("http://localhost:3000/verify", {
+            discordId: member.user.id,
+            username: member.user.username,
+          });
+
+          // Check if the response is successful
+          if (response.data.success) {
             // Grant access by assigning the required role to the user
             await guildMember.roles.add(requiredRoleID);
 
-            // Fetch and delete the verification message if it's available
-            if (message) {
-              const channel = await client.channels.fetch(message.channel_id);
-              const msg = await channel.messages.fetch(message.id);
-              await msg.delete();
-            }
+            // Send a follow-up ephemeral message to confirm verification and remove the button and image
+            await res.send({
+              type: InteractionResponseType.UPDATE_MESSAGE,
+              data: {
+                content:
+                  "✅ You have been verified! You now have access to the restricted channel.",
+                embeds: [], // Remove the embed (image and other elements)
+                components: [], // Remove all components (buttons)
+                flags: 64, // Ephemeral response, only visible to the user
+              },
+            });
+          } else {
+            // If verification fails, send a message with a button and a link
+            const button = new ButtonBuilder()
+              .setLabel("Buy AirDao Tokens")
+              .setStyle(ButtonStyle.Link)
+              .setURL("https://www.kucoin.com/how-to-buy/airdao");
 
-            // Send a follow-up ephemeral message to confirm verification
-            const confirmationMessage = await client.rest.patch(
-              `/webhooks/${process.env.APP_ID}/${token}/messages/@original`,
-              {
-                body: {
-                  content:
-                    "You have been verified! You now have access to the restricted channel.",
-                  flags: 64, // Ephemeral response, only visible to the user
-                },
-              }
-            );
+            const row = new ActionRowBuilder().addComponents(button);
 
-            // Optionally, if you need to delete the confirmation message after a delay
-            setTimeout(async () => {
-              try {
-                await confirmationMessage.delete();
-              } catch (error) {
-                console.error("Error deleting confirmation message:", error);
-              }
-            }, 5000); // Delete the confirmation message after 5 seconds
-          } catch (error) {
-            console.error("Error during role assignment:", error);
-
-            // Edit the original response in case of an error
-            await client.rest.patch(
-              `/webhooks/${process.env.APP_ID}/${token}/messages/@original`,
-              {
-                body: {
-                  content:
-                    "An error occurred during the verification process. Please try again later.",
-                  flags: 64, // Ephemeral response, only visible to the user
-                },
-              }
-            );
+            await res.send({
+              type: InteractionResponseType.UPDATE_MESSAGE,
+              data: {
+                content:
+                  "Verification failed. Please check the instructions and try again.\nGo Get your AirDao Tokens",
+                components: [row],
+                flags: 64, // Ephemeral response, only visible to the user
+              },
+            });
           }
-        }, 2000); // 2-second delay (2000 milliseconds)
+        } catch (error) {
+          console.error("Error during verification process:", error);
+
+          // Edit the original response in case of an error
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              content:
+                "An error occurred during the verification process. Please try again later.",
+              components: [], // Remove all components in case of error
+              flags: 64, // Ephemeral response, only visible to the user
+            },
+          });
+        }
 
         return;
       }
@@ -158,7 +176,7 @@ async function sendVerificationMessageInChannel(channel, member) {
 
   try {
     // Send a message in the channel mentioning the user with the verification prompt
-    const message = await channel.send({
+    await channel.send({
       content: `<@${member.id}>`,
       embeds: [embed],
       components: [row],
