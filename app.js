@@ -52,7 +52,7 @@ app.post("/verify", async (req, res) => {
 async function deleteBotMessages(guild, userId) {
   try {
     // Fetch messages from the specified channel
-    const channel = guild.channels.cache.get("1286788205001310229"); // Update with correct channel ID
+    const channel = guild.channels.cache.get("1286788091130023938"); // Update with correct channel ID
     if (!channel) {
       console.error("Channel not found for deleting messages.");
       return;
@@ -153,7 +153,8 @@ app.post(
         try {
           // Make a POST request to your verification endpoint (full URL)
           // http://localhost:3000
-          const response = await axios.post("https://discord-bot-1-7fgm.onrender.com/verify", {
+          // https://discord-bot-1-7fgm.onrender.com/verify
+          const response = await axios.post("https://discord-bot-1-7fgm.onrender.com/verify/verify", {
             discordId: member.user.id,
             username: member.user.username,
           });
@@ -277,7 +278,7 @@ client.once("ready", async () => {
 // Listen for new members joining the server and prompt verification interaction
 client.on("guildMemberAdd", async (member) => {
   console.log(`New member joined: ${member.user.tag}`);
-  const channel = member.guild.channels.cache.get("1286788205001310229"); // Update with correct channel ID
+  const channel = member.guild.channels.cache.get("1286788091130023938"); // Update with correct channel ID
 
   if (channel) {
     await sendVerificationMessageInChannel(channel, member);
@@ -292,3 +293,6 @@ client.login(process.env.BOT_TOKEN);
 app.listen(PORT, () => {
   console.log("Listening on port", PORT);
 });
+
+
+// 1286788205001310229
